@@ -33,6 +33,6 @@ def text_reply(msg):
 def chatrooms():
     return itchat.get_chatrooms(update=True)
 
-itchat.auto_login(hotReload=True)
+itchat.auto_login(hotReload=False)
 print("登陆成功")
 itchat.run()

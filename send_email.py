@@ -30,26 +30,24 @@ def read_config():
 def read_email_content():
     if os.path.exists('email_content.txt'):
         with open('email_content.txt', 'r', encoding='utf-8') as file:
-            print('读取邮件内容文件成功')
             return file.read()
     else:
         print('邮件内容文件不存在，使用默认邮件内容')
         return default_content
 
-# 发送邮件
-def send_emails():
-    config = read_config()
+def send_emails(config, content):
     sender = config.get('email', '1572189162@qq.com')
     password = config.get('password', 'zwtskcdwrqoajfci')
-    content = read_email_content()
+
+    # 确保 results 文件夹存在
+    results_dir = os.path.join(os.path.dirname(__file__), 'results')
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
 
     # 读取邮箱地址并清空文件内容
     with lock:
         with open('emails.txt', 'r+') as file:
             emails = file.read().splitlines()
-            # if not emails:
-            #     print('没有要发送的邮件地址，结束本次运行。')
-            #     return
             file.truncate(0)  # 清空文件内容
 
     # 发送邮件并记录结果
@@ -67,19 +65,19 @@ def send_emails():
 
             if not failed_recipients:
                 # 记录成功
-                with open(f'{current_date}.txt', 'a', encoding='utf-8') as file:
+                with open(os.path.join(results_dir, f'{current_date}.txt'), 'a', encoding='utf-8') as file:
                     file.write(f'{email}: 成功发送\n')
             else:
                 # 记录失败
-                with open(f'{current_date}.txt', 'a', encoding='utf-8') as file:
+                with open(os.path.join(results_dir, f'{current_date}.txt'), 'a', encoding='utf-8') as file:
                     file.write(f'{email}: 发送失败 - 失败的收件人: {failed_recipients}\n')
 
         except Exception as e:
             # 记录失败
-            with open(f'{current_date}.txt', 'a', encoding='utf-8') as file:
+            with open(os.path.join(results_dir, f'{current_date}.txt'), 'a', encoding='utf-8') as file:
                 file.write(f'{email}: 发送失败 - {str(e)}\n')
 
-    print('邮件发送完成，请查看结果文件。')
-
 if __name__ == "__main__":
-    send_emails()
+    config = read_config()
+    content = read_email_content()
+    send_emails(config, content)

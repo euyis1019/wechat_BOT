@@ -36,11 +36,12 @@ def read_email_content():
         return default_content
 
 def send_emails(config, content):
-    sender = config.get('email', '1572189162@qq.com')
-    password = config.get('password', 'zwtskcdwrqoajfci')
-
+    sender = config.get('email')
+    password = config.get('password')
+    subject = config.get('subject')
+    print(sender,password, subject)
     # 确保 results 文件夹存在
-    results_dir = os.path.join(os.path.dirname(__file__), 'results')
+    results_dir = 'results'
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -54,7 +55,7 @@ def send_emails(config, content):
     for email in emails:
         try:
             msg = MIMEText(content, 'plain', 'utf-8')
-            msg['Subject'] = Header('求职蛙', 'utf-8')
+            msg['Subject'] = Header(subject, 'utf-8')
             msg['From'] = sender
             msg['To'] = email
 

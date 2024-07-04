@@ -15,9 +15,8 @@ content = None
 
 def get_log_filename():
     # 确保 console 文件夹存在
-    log_dir = os.path.join(os.path.dirname(__file__), 'console')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    log_dir = "console"
+    os.makedirs(log_dir, exist_ok=True)
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     return os.path.join(log_dir, f"log_{timestamp}.txt")
@@ -29,8 +28,14 @@ log_filename = get_log_filename()
 def run_wechat_bot(log_filename):
     with open(log_filename, 'a', encoding='utf-8') as log_file:
         log_file.write("WeChat Bot Started\n")
-        result = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), 'main.py')], stdout=log_file,
+        if "python" in os.path.basename(sys.executable):
+            log_file.write("Running with Python\n")
+            result = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), 'main.py')], stdout=log_file,
                                 stderr=log_file)
+        else:
+            log_file.write("Running with PyInstaller\n")
+            result = subprocess.run([os.path.join(os.path.dirname(sys.executable), 'wechat-bot-core.exe')],
+                                    stdout=log_file, stderr=log_file)
         log_file.write(f"WeChat Bot Finished with exit code {result.returncode}\n")
 
 
@@ -39,8 +44,14 @@ def run_email_sender(log_filename, sleep_time, config, content):
         while running:
             time.sleep(sleep_time)
             log_file.write(f"Checking emails at {datetime.datetime.now().isoformat()}\n")
-            result = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), 'send_email.py')],
-                                    stdout=log_file, stderr=log_file)
+            if "python" in os.path.basename(sys.executable):
+                log_file.write("Running with Python\n")
+                result = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), 'send_email.py')], stdout=log_file,
+                                    stderr=log_file)
+            else:
+                log_file.write("Running with PyInstaller\n")
+                result = subprocess.run([os.path.join(os.path.dirname(sys.executable), 'send-mail.exe')],
+                                        stdout=log_file, stderr=log_file)
             log_file.write(f"Email Sender Finished with exit code {result.returncode}\n")
 
 
@@ -62,10 +73,11 @@ def stop_threads():
 
 def periodic_task(text_widget, filepath):
     try:
-        with open(filepath, 'r', encoding='utf-8') as file:
+        # stderr写出的log默认是gbk
+        with open(filepath, 'r', encoding='gbk') as file:
             content = file.read()
     except FileNotFoundError:
-        content = "已成功初始化请确认邮箱，授权码，时间间隔的配置信息是否正确。\n 请点击启动"
+        content = "已成功初始化请确认邮箱，授权码，时间间隔的配置信息是否正确。\n"
 
     text_widget.configure(state='normal')
     text_widget.delete(1.0, END)
@@ -75,18 +87,19 @@ def periodic_task(text_widget, filepath):
     text_widget.after(1000, periodic_task, text_widget, filepath)
 
 
-def save_config(email, password, sleep_time):
-    config_filename = os.path.join(os.path.dirname(__file__), 'config.properties')
+def save_config(email, password, sleep_time, subject):
+    config_filename ='config.properties'
     with open(config_filename, 'w', encoding='utf-8') as config_file:
         config_file.write(f"email={email}\n")
         config_file.write(f"password={password}\n")
         config_file.write(f"sleep={sleep_time}\n")
+        config_file.write(f"subject={subject}\n")
     messagebox.showinfo("信息", "配置已保存")
 
 
 def read_config():
     config = {}
-    config_filename = os.path.join(os.path.dirname(__file__), 'config.properties')
+    config_filename = 'config.properties'
     if os.path.exists(config_filename):
         with open(config_filename, 'r', encoding='utf-8') as file:
             for line in file:
@@ -115,7 +128,7 @@ def create_gui():
 
     root = ttk.Window(themename="darkly")
     root.title("邮件助手")
-    root.geometry('600x600')
+    root.geometry('600x800')
 
     frame = ttk.Frame(root, padding=20)
     frame.pack(fill=BOTH, expand=YES)
@@ -135,15 +148,22 @@ def create_gui():
     sleep_entry = ttk.Entry(frame, width=50)
     sleep_entry.pack(pady=5)
 
+    subject_label = ttk.Label(frame, text="邮件主题:")
+    subject_label.pack(pady=5)
+    subject_entry = ttk.Entry(frame, width=50)
+    subject_entry.pack(pady=5)
+
     email_entry.insert(0, config.get('email', ''))
     password_entry.insert(0, config.get('password', ''))
     sleep_entry.insert(0, config.get('sleep', '60'))
+    subject_entry.insert(0, config.get('subject', ''))
 
     def save_config_button_action():
         email = email_entry.get()
         password = password_entry.get()
         sleep_time = sleep_entry.get()
-        save_config(email, password, sleep_time)
+        subject = subject_entry.get()
+        save_config(email, password, sleep_time, subject)
 
     config_button = ttk.Button(frame, text="保存配置", bootstyle=PRIMARY, command=save_config_button_action)
     config_button.pack(pady=20)
